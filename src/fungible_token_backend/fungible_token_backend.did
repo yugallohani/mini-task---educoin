@@ -1,0 +1,24 @@
+type Balance = record { amount : nat64 };
+type MintResult = variant { Success; Unauthorized };
+type TokenInfo = record {
+  name : text;
+  symbol : text;
+  total_supply : nat64;
+  creator : principal;
+};
+type TransferResult = variant {
+  Success;
+  InsufficientBalance;
+  SameAccount;
+};
+type UserInfo = record { user_principal : principal; balance : nat64 };
+
+service : {
+  get_all_users : () -> (vec UserInfo) query;
+  get_balance : (principal) -> (nat64) query;
+  get_token_info : () -> (TokenInfo) query;
+  get_total_supply : () -> (nat64) query;
+  is_creator : (principal) -> (bool) query;
+  mint : (principal, nat64) -> (MintResult);
+  transfer : (principal, nat64) -> (TransferResult);
+}

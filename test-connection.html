@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Token System Connection Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-result { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        button { padding: 10px 20px; margin: 5px; border: none; border-radius: 5px; cursor: pointer; }
+        button.primary { background-color: #007bff; color: white; }
+        button.secondary { background-color: #6c757d; color: white; }
+        #log { background-color: #f8f9fa; padding: 15px; border-radius: 5px; height: 300px; overflow-y: auto; white-space: pre-wrap; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <h1>🔧 EduCoin Token System - Connection Test</h1>
+    
+    <div class="test-result info">
+        <strong>Testing connection to backend canister...</strong><br>
+        Canister ID: uxrrr-q7777-77774-qaaaq-cai<br>
+        Host: http://127.0.0.1:4943
+    </div>
+
+    <button class="primary" onclick="testConnection()">Test Backend Connection</button>
+    <button class="secondary" onclick="testAuth()">Test Authentication</button>
+    <button class="secondary" onclick="clearLog()">Clear Log</button>
+
+    <h2>📋 Test Results</h2>
+    <div id="log">Click "Test Backend Connection" to start testing...</div>
+
+    <script type="module">
+        // Import required modules
+        import { Actor, HttpAgent } from 'https://unpkg.com/@dfinity/agent/lib/esm/index.js';
+        import { AuthClient } from 'https://unpkg.com/@dfinity/auth-client/lib/esm/index.js';
+
+        let actor = null;
+        const canisterId = 'uxrrr-q7777-77774-qaaaq-cai';
+
+        function log(message, type = 'info') {
+            const logElement = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'error' ? '❌' : type === 'success' ? '✅' : 'ℹ️';
+            logElement.textContent += `[${timestamp}] ${prefix} ${message}\n`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('log').textContent = '';
+        }
+
+        // IDL factory for the token canister
+        const idlFactory = ({ IDL }) => {
+            const Principal = IDL.Principal;
+            const TokenInfo = IDL.Record({
+                'name': IDL.Text,
+                'symbol': IDL.Text,
+                'total_supply': IDL.Nat64,
+                'creator': Principal,
+            });
+            const UserInfo = IDL.Record({
+                'user_principal': Principal,
+                'balance': IDL.Nat64,
+            });
+            return IDL.Service({
+                'get_token_info': IDL.Func([], [TokenInfo], ['query']),
+                'get_balance': IDL.Func([Principal], [IDL.Nat64], ['query']),
+                'get_total_supply': IDL.Func([], [IDL.Nat64], ['query']),
+                'get_all_users': IDL.Func([], [IDL.Vec(UserInfo)], ['query']),
+            });
+        };
+
+        async function createActor() {
+            log('Creating HTTP agent...');
+            const agent = new HttpAgent({
+                host: 'http://127.0.0.1:4943',
+                verifyQuerySignatures: false,
+            });
+
+            log('Fetching root key for local development...');
+            try {
+                await agent.fetchRootKey();
+                log('Root key fetched successfully', 'success');
+            } catch (error) {
+                log(`Failed to fetch root key: ${error.message}`, 'error');
+                throw error;
+            }
+
+            log(`Creating actor for canister: ${canisterId}`);
+            actor = Actor.createActor(idlFactory, {
+                agent,
+                canisterId,
+            });
+
+            log('Actor created successfully', 'success');
+            return actor;
+        }
+
+        window.testConnection = async function() {
+            log('Starting backend connection test...');
+            
+            try {
+                const testActor = await createActor();
+                
+                log('Testing get_token_info...');
+                const tokenInfo = await testActor.get_token_info();
+                log(`Token info: ${JSON.stringify(tokenInfo, null, 2)}`, 'success');
+                
+                log('Testing get_total_supply...');
+                const totalSupply = await testActor.get_total_supply();
+                log(`Total supply: ${totalSupply.toString()}`, 'success');
+                
+                log('Testing get_all_users...');
+                const users = await testActor.get_all_users();
+                log(`Found ${users.length} users:`, 'success');
+                users.forEach((user, index) => {
+                    log(`  ${index + 1}. ${user.user_principal.toString()}: ${user.balance.toString()} tokens`);
+                });
+                
+                log('🎉 All tests passed! Backend connection is working.', 'success');
+                
+            } catch (error) {
+                log(`❌ Test failed: ${error.message}`, 'error');
+                console.error('Detailed error:', error);
+            }
+        };
+
+        window.testAuth = async function() {
+            log('Testing Internet Identity authentication...');
+            
+            try {
+                log('Creating auth client...');
+                const authClient = await AuthClient.create();
+                
+                log('Checking if already authenticated...');
+                const isAuthenticated = await authClient.isAuthenticated();
+                log(`Current auth status: ${isAuthenticated ? 'Authenticated' : 'Not authenticated'}`);
+                
+                if (isAuthenticated) {
+                    const identity = authClient.getIdentity();
+                    const principal = identity.getPrincipal();
+                    log(`Current principal: ${principal.toString()}`, 'success');
+                } else {
+                    log('Starting login flow...');
+                    const identityProvider = 'http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943';
+                    log(`Using identity provider: ${identityProvider}`);
+                    
+                    authClient.login({
+                        identityProvider,
+                        onSuccess: () => {
+                            log('Login successful!', 'success');
+                            const identity = authClient.getIdentity();
+                            const principal = identity.getPrincipal();
+                            log(`Logged in as: ${principal.toString()}`, 'success');
+                        },
+                        onError: (error) => {
+                            log(`Login failed: ${error}`, 'error');
+                        },
+                    });
+                }
+                
+            } catch (error) {
+                log(`Auth test failed: ${error.message}`, 'error');
+                console.error('Detailed error:', error);
+            }
+        };
+
+        // Make functions available globally
+        window.clearLog = clearLog;
+    </script>
+</body>
+</html>

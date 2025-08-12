@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "canisters": {
+    "fungible_token_backend": {
+      "type": "rust",
+      "package": "fungible_token_backend",
+      "candid": "src/fungible_token_backend/fungible_token_backend.did"
+    },
+    "fungible_token_frontend": {
+      "type": "assets",
+      "source": ["dist/"]
+    },
+    "internet_identity": {
+      "type": "pull",
+      "id": "rdmx6-jaaaa-aaaaa-aaadq-cai"
+    }
+  },
+  "dependencies": [
+    {
+      "name": "internet_identity",
+      "location": "https://github.com/dfinity/internet-identity.git",
+      "tag": "release-2023-10-25"
+    }
+  ],
+  "defaults": {
+    "build": {
+      "args": "",
+      "packtool": ""
+    }
+  },
+  "networks": {
+    "local": {
+      "bind": "127.0.0.1:4943",
+      "type": "ephemeral"
+    },
+    "ic": {
+      "providers": ["https://ic0.app"],
+      "type": "persistent"
+    }
+  }
+}

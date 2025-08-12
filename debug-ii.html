@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Internet Identity Debug</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .result { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        button { padding: 10px 20px; margin: 5px; border: none; border-radius: 5px; cursor: pointer; background-color: #007bff; color: white; }
+        #log { background-color: #f8f9fa; padding: 15px; border-radius: 5px; height: 400px; overflow-y: auto; white-space: pre-wrap; font-family: monospace; }
+        .ii-link { display: block; margin: 10px 0; padding: 10px; background-color: #e9ecef; border-radius: 5px; text-decoration: none; color: #495057; }
+        .ii-link:hover { background-color: #dee2e6; }
+    </style>
+</head>
+<body>
+    <h1>🔐 Internet Identity Debug Tool</h1>
+    
+    <div class="result info">
+        <h3>Internet Identity URLs to Test:</h3>
+        <a href="http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943" target="_blank" class="ii-link">
+            http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943
+        </a>
+        <a href="http://localhost:4943?canisterId=rdmx6-jaaaa-aaaaa-aaadq-cai" target="_blank" class="ii-link">
+            http://localhost:4943?canisterId=rdmx6-jaaaa-aaaaa-aaadq-cai
+        </a>
+        <a href="http://127.0.0.1:4943?canisterId=rdmx6-jaaaa-aaaaa-aaadq-cai" target="_blank" class="ii-link">
+            http://127.0.0.1:4943?canisterId=rdmx6-jaaaa-aaaaa-aaadq-cai
+        </a>
+    </div>
+
+    <button onclick="testII()">Test Internet Identity</button>
+    <button onclick="testDirectLogin()">Test Direct Login</button>
+    <button onclick="checkAuthStatus()">Check Auth Status</button>
+    <button onclick="clearLog()">Clear Log</button>
+
+    <h2>📋 Debug Results</h2>
+    <div id="log">Click a button above to start testing...</div>
+
+    <script type="module">
+        import { AuthClient } from 'https://unpkg.com/@dfinity/auth-client/lib/esm/index.js';
+
+        let authClient = null;
+
+        function log(message, type = 'info') {
+            const logElement = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'error' ? '❌' : type === 'success' ? '✅' : 'ℹ️';
+            logElement.textContent += `[${timestamp}] ${prefix} ${message}\n`;
+            logElement.scrollTop = logElement.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('log').textContent = '';
+        }
+
+        window.clearLog = clearLog;
+
+        async function initAuthClient() {
+            if (!authClient) {
+                log('Creating AuthClient...');
+                authClient = await AuthClient.create();
+                log('AuthClient created successfully', 'success');
+            }
+            return authClient;
+        }
+
+        window.testII = async function() {
+            log('Starting Internet Identity test...');
+            
+            try {
+                const client = await initAuthClient();
+                
+                log('Testing II canister accessibility...');
+                
+                const identityProviders = [
+                    'http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943',
+                    'http://localhost:4943?canisterId=rdmx6-jaaaa-aaaaa-aaadq-cai',
+                    'http://127.0.0.1:4943?canisterId=rdmx6-jaaaa-aaaaa-aaadq-cai'
+                ];
+                
+                for (const provider of identityProviders) {
+                    log(`Testing provider: ${provider}`);
+                    try {
+                        const response = await fetch(provider);
+                        if (response.ok) {
+                            log(`✅ ${provider} - Accessible (${response.status})`, 'success');
+                        } else {
+                            log(`❌ ${provider} - Not accessible (${response.status})`, 'error');
+                        }
+                    } catch (error) {
+                        log(`❌ ${provider} - Error: ${error.message}`, 'error');
+                    }
+                }
+                
+            } catch (error) {
+                log(`Test failed: ${error.message}`, 'error');
+                console.error('Detailed error:', error);
+            }
+        };
+
+        window.testDirectLogin = async function() {
+            log('Starting direct login test...');
+            
+            try {
+                const client = await initAuthClient();
+                
+                log('Current hostname:', window.location.hostname);
+                log('Current URL:', window.location.href);
+                
+                const identityProvider = 'http://rdmx6-jaaaa-aaaaa-aaadq-cai.localhost:4943';
+                log(`Using identity provider: ${identityProvider}`);
+                
+                log('Initiating login...');
+                
+                const loginResult = await new Promise((resolve) => {
+                    const timeoutId = setTimeout(() => {
+                        log('Login timed out after 30 seconds', 'error');
+                        resolve(false);
+                    }, 30000);
+                    
+                    client.login({
+                        identityProvider,
+                        maxTimeToLive: BigInt(7 * 24 * 60 * 60 * 1000 * 1000 * 1000),
+                        onSuccess: () => {
+                            clearTimeout(timeoutId);
+                            log('Login successful!', 'success');
+                            const identity = client.getIdentity();
+                            const principal = identity.getPrincipal();
+                            log(`Logged in as: ${principal.toString()}`, 'success');
+                            resolve(true);
+                        },
+                        onError: (error) => {
+                            clearTimeout(timeoutId);
+                            log(`Login failed: ${error}`, 'error');
+                            console.error('Login error details:', error);
+                            resolve(false);
+                        },
+                    });
+                });
+                
+                if (loginResult) {
+                    log('Login process completed successfully', 'success');
+                } else {
+                    log('Login process failed', 'error');
+                }
+                
+            } catch (error) {
+                log(`Direct login test failed: ${error.message}`, 'error');
+                console.error('Detailed error:', error);
+            }
+        };
+
+        window.checkAuthStatus = async function() {
+            log('Checking authentication status...');
+            
+            try {
+                const client = await initAuthClient();
+                
+                const isAuth = await client.isAuthenticated();
+                log(`Authentication status: ${isAuth ? 'AUTHENTICATED' : 'NOT AUTHENTICATED'}`, isAuth ? 'success' : 'info');
+                
+                if (isAuth) {
+                    const identity = client.getIdentity();
+                    const principal = identity.getPrincipal();
+                    log(`Current principal: ${principal.toString()}`, 'success');
+                    log(`Identity type: ${typeof identity}`, 'info');
+                    
+                    // Try to get expiration
+                    try {
+                        const delegation = await client.getIdentity().getDelegation();
+                        log(`Delegation details: ${JSON.stringify(delegation, null, 2)}`, 'info');
+                    } catch (e) {
+                        log(`Could not get delegation: ${e.message}`, 'error');
+                    }
+                } else {
+                    log('No active authentication found', 'info');
+                }
+                
+            } catch (error) {
+                log(`Auth status check failed: ${error.message}`, 'error');
+                console.error('Detailed error:', error);
+            }
+        };
+
+        // Auto-run initial checks
+        log('Internet Identity Debug Tool Loaded');
+        log('Click the buttons above to run tests');
+        log('');
+        log('Expected II Canister ID: rdmx6-jaaaa-aaaaa-aaadq-cai');
+        log('Current hostname: ' + window.location.hostname);
+        log('');
+    </script>
+</body>
+</html>

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Auth Sync Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .status { padding: 15px; margin: 10px 0; border-radius: 5px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        button { padding: 10px 20px; margin: 5px; border: none; border-radius: 5px; cursor: pointer; background-color: #007bff; color: white; }
+    </style>
+</head>
+<body>
+    <h1>🔄 Authentication Sync Test</h1>
+    
+    <div class="status info">
+        <p><strong>This tool tests if authentication state is properly synced</strong></p>
+        <p>Expected behavior:</p>
+        <ul>
+            <li>✅ Login successful in main app → Tabs should unlock</li>
+            <li>✅ Logout in main app → Tabs should lock again</li>
+            <li>✅ Authentication persists across page refreshes</li>
+        </ul>
+    </div>
+
+    <button onclick="checkAuthState()">Check Current Auth State</button>
+    <button onclick="openMainApp()">Open Main App</button>
+
+    <div id="results"></div>
+
+    <script type="module">
+        import { AuthClient } from 'https://unpkg.com/@dfinity/auth-client/lib/esm/index.js';
+
+        function log(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.innerHTML = `<p><strong>${new Date().toLocaleTimeString()}</strong>: ${message}</p>`;
+            results.appendChild(div);
+        }
+
+        window.checkAuthState = async function() {
+            log('Checking authentication state...', 'info');
+            
+            try {
+                const authClient = await AuthClient.create();
+                const isAuthenticated = await authClient.isAuthenticated();
+                
+                if (isAuthenticated) {
+                    const identity = authClient.getIdentity();
+                    const principal = identity.getPrincipal();
+                    log(`✅ AUTHENTICATED - Principal: ${principal.toString()}`, 'success');
+                    log('The Transfer and Mint tabs should now be unlocked in the main app.', 'success');
+                } else {
+                    log('❌ NOT AUTHENTICATED', 'error');
+                    log('The Transfer and Mint tabs should be locked in the main app.', 'info');
+                }
+                
+            } catch (error) {
+                log(`Error checking auth: ${error.message}`, 'error');
+            }
+        };
+
+        window.openMainApp = function() {
+            window.open('http://uzt4z-lp777-77774-qaabq-cai.localhost:4943/', '_blank');
+        };
+
+        // Auto-check on load
+        checkAuthState();
+        
+        // Check every 5 seconds
+        setInterval(checkAuthState, 5000);
+    </script>
+</body>
+</html>

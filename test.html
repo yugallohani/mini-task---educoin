@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>EduCoin Test</title>
+    <script src="https://unpkg.com/@dfinity/agent@1.0.1/lib/index.js"></script>
+    <script src="https://unpkg.com/@dfinity/candid@1.0.1/lib/index.js"></script>
+</head>
+<body>
+    <h1>EduCoin Backend Test</h1>
+    <button onclick="testConnection()">Test Connection</button>
+    <div id="result"></div>
+
+    <script>
+        const { Actor, HttpAgent } = window.dfinity.agent;
+        const { IDL } = window.dfinity.candid;
+
+        const idlFactory = ({ IDL }) => {
+            const Principal = IDL.Principal;
+            const TokenInfo = IDL.Record({
+                'name': IDL.Text,
+                'symbol': IDL.Text,
+                'total_supply': IDL.Nat64,
+                'creator': Principal,
+            });
+            const UserInfo = IDL.Record({
+                'user_principal': Principal,
+                'balance': IDL.Nat64,
+            });
+            return IDL.Service({
+                'get_token_info': IDL.Func([], [TokenInfo], ['query']),
+                'get_all_users': IDL.Func([], [IDL.Vec(UserInfo)], ['query']),
+            });
+        };
+
+        async function testConnection() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing connection...';
+
+            try {
+                const agent = new HttpAgent({
+                    host: 'http://localhost:4943',
+                });
+                
+                // Fetch root key for certificate validation when running locally
+                await agent.fetchRootKey();
+                
+                const canisterId = 'uxrrr-q7777-77774-qaaaq-cai';
+                const actor = Actor.createActor(idlFactory, {
+                    agent,
+                    canisterId,
+                });
+                
+                const [tokenInfo, users] = await Promise.all([
+                    actor.get_token_info(),
+                    actor.get_all_users()
+                ]);
+                
+                resultDiv.innerHTML = `
+                    <h2>✅ SUCCESS!</h2>
+                    <h3>Token Info:</h3>
+                    <p>Name: ${tokenInfo.name}</p>
+                    <p>Symbol: ${tokenInfo.symbol}</p>
+                    <p>Total Supply: ${tokenInfo.total_supply.toString()}</p>
+                    <h3>Users:</h3>
+                    <p>Total Users: ${users.length}</p>
+                    <p>User 1 Balance: ${users[0]?.balance.toString() || 'N/A'}</p>
+                `;
+                
+            } catch (error) {
+                resultDiv.innerHTML = `<h2>❌ ERROR:</h2><p>${error.message}</p>`;
+                console.error('Connection failed:', error);
+            }
+        }
+    </script>
+</body>
+</html>

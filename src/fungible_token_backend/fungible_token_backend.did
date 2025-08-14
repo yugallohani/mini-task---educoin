@@ -19,6 +19,7 @@ service : {
   get_token_info : () -> (TokenInfo) query;
   get_total_supply : () -> (nat64) query;
   is_creator : (principal) -> (bool) query;
+  init_user : () -> (nat64);
   mint : (principal, nat64) -> (MintResult);
   transfer : (principal, nat64) -> (TransferResult);
 }

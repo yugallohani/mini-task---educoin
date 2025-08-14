@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Principal } from '@dfinity/principal';
 import { isAuthenticated, getPrincipal } from '../utils/dev-auth';
+import { getActor } from '../utils/actor';
 
 interface AuthContextType {
   isAuth: boolean;
@@ -32,6 +33,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const userPrincipal = await getPrincipal();
         console.log('👤 User principal:', userPrincipal?.toString());
         setPrincipal(userPrincipal);
+        
+        // Initialize user with welcome bonus (1000 EDU tokens)
+        try {
+          const actor = await getActor();
+          const balance = await actor.init_user();
+          console.log('🎁 User initialized with balance:', balance.toString(), 'EDU tokens');
+        } catch (initError) {
+          console.warn('⚠️ Failed to initialize user with welcome bonus:', initError);
+        }
       } else {
         setPrincipal(null);
       }

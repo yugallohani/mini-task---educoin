@@ -27,6 +27,7 @@ export interface TokenActor {
   get_total_supply: () => Promise<bigint>;
   get_all_users: () => Promise<UserInfo[]>;
   is_creator: (principal: Principal) => Promise<boolean>;
+  init_user: () => Promise<bigint>;
   transfer: (to: Principal, amount: bigint) => Promise<TransferResult>;
   mint: (to: Principal, amount: bigint) => Promise<MintResult>;
 }

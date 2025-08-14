@@ -11,7 +11,6 @@ use std::cell::RefCell;
 
 // Memory types
 type Memory = VirtualMemory<DefaultMemoryImpl>;
-type IdCell = ic_stable_structures::Cell<u64, Memory>;
 
 // Token metadata
 #[derive(CandidType, Deserialize, Serialize, Clone, Debug)]
@@ -75,6 +74,24 @@ pub struct UserInfo {
     pub balance: u64,
 }
 
+// Registration info to track how users were registered
+#[derive(CandidType, Deserialize, Serialize, Clone, Debug)]
+pub struct RegistrationInfo {
+    pub registered_via_ii: bool, // true if registered through Internet Identity
+}
+
+impl Storable for RegistrationInfo {
+    fn to_bytes(&self) -> std::borrow::Cow<[u8]> {
+        Cow::Owned(candid::encode_one(self).unwrap())
+    }
+
+    fn from_bytes(bytes: std::borrow::Cow<[u8]>) -> Self {
+        candid::decode_one(&bytes).unwrap()
+    }
+
+    const BOUND: Bound = Bound::Unbounded;
+}
+
 // Transfer result
 #[derive(CandidType, Deserialize)]
 pub enum TransferResult {
@@ -113,12 +130,18 @@ thread_local! {
             MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(1)))
         )
     );
+
+    static REGISTRATIONS: RefCell<StableBTreeMap<PrincipalWrapper, RegistrationInfo, Memory>> = RefCell::new(
+        StableBTreeMap::init(
+            MEMORY_MANAGER.with(|m| m.borrow().get(MemoryId::new(2)))
+        )
+    );
 }
 
 #[init]
 fn init() {
     // Use your Internet Identity Principal ID as the creator
-    let creator_principal = Principal::from_text("ffmoa-cxqk3-ankuc-aggnj-vrefj-azgyp-csfpi-4r22l-i33cc-26ns3-vae").unwrap();
+    let creator_principal = Principal::from_text("vxwx5-ub6ab-gnobq-jrsk3-egfcp-tz3hj-3mpul-thqzf-dtzol-qb3gz-bqe").unwrap();
     let initial_supply = 1_000_000u64; // 1 million initial tokens
     
     // Initialize token info
@@ -148,6 +171,51 @@ fn post_upgrade() {
     // Stable structures automatically handle restoration
 }
 
+// Helper function to register a user through Internet Identity and give welcome bonus
+fn register_user_via_ii(principal: Principal) -> bool {
+    const WELCOME_BONUS: u64 = 1000; // 1000 EDU tokens for new users
+    
+    // Check if user is already registered
+    let already_registered = REGISTRATIONS.with(|registrations| {
+        registrations.borrow().contains_key(&PrincipalWrapper(principal))
+    });
+    
+    if already_registered {
+        return false; // User already registered, no bonus given
+    }
+    
+    // Register the user as Internet Identity user
+    REGISTRATIONS.with(|registrations| {
+        registrations.borrow_mut().insert(
+            PrincipalWrapper(principal),
+            RegistrationInfo { registered_via_ii: true }
+        );
+    });
+    
+    // Give welcome bonus
+    BALANCES.with(|balances| {
+        let mut balances_ref = balances.borrow_mut();
+        let current_balance = balances_ref
+            .get(&PrincipalWrapper(principal))
+            .map(|b| b.amount)
+            .unwrap_or(0);
+        
+        balances_ref.insert(
+            PrincipalWrapper(principal),
+            Balance { amount: current_balance + WELCOME_BONUS }
+        );
+    });
+    
+    // Update total supply
+    TOKEN_INFO.with(|token_info| {
+        let mut info = token_info.borrow().get().clone();
+        info.total_supply += WELCOME_BONUS;
+        token_info.borrow_mut().set(info).unwrap();
+    });
+    
+    true // Bonus was given
+}
+
 // Query functions
 
 #[query]
@@ -157,6 +225,7 @@ fn get_token_info() -> TokenInfo {
 
 #[query]
 fn get_balance(account: Principal) -> u64 {
+    // Simply return the balance without giving any bonus
     BALANCES.with(|balances| {
         balances
             .borrow()
@@ -191,6 +260,25 @@ fn is_creator(principal: Principal) -> bool {
 }
 
 // Update functions
+
+#[update]
+fn init_user() -> u64 {
+    let caller = ic_cdk::caller();
+    
+    // Register user via Internet Identity and give welcome bonus if new
+    if caller != Principal::anonymous() {
+        register_user_via_ii(caller);
+    }
+    
+    // Return the user's balance
+    BALANCES.with(|balances| {
+        balances
+            .borrow()
+            .get(&PrincipalWrapper(caller))
+            .map(|balance| balance.amount)
+            .unwrap_or(0)
+    })
+}
 
 #[update]
 fn transfer(to: Principal, amount: u64) -> TransferResult {

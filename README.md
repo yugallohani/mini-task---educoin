@@ -1,202 +1,74 @@
 # 🪙 EduCoin Token System
 
-> **A complete fungible token system built on Internet Computer Protocol**
+> **A decentralized fungible token system on Internet Computer with Internet Identity integration**
 
-## 🎯 **Overview**
+## 🌐 **Live Application**
 
-EduCoin is a fully functional fungible token system demonstrating modern blockchain development on the Internet Computer. It features secure authentication, real-time token operations, and a professional user interface.
+**🚀 Access EduCoin:** **https://5stdt-mqaaa-aaaab-qac3q-cai.icp0.io/**
 
-## 🚀 **Quick Start**
+**🔧 Backend API:** https://a4gq6-oaaaa-aaaab-qaa4q-cai.raw.icp0.io/?id=oqjvn-fqaaa-aaaab-qab5q-cai
 
-```bash
-# 1. Setup prerequisites
-./scripts/setup.sh
-
-# 2. Deploy locally  
-./scripts/deploy.sh local
-
-# 3. Access the application
-# Visit: http://[canister-id].localhost:4943/
-```
+---
 
 ## ✨ **Key Features**
 
-### 🏦 **Token System**
-- **EduCoin (EDU)** with 1,000,000 initial supply
-- **Secure transfers** between users with validation
-- **Creator-only minting** with access control
-- **Balance checking** for any Principal ID
-- **Live token explorer** with search and rankings
-- **Persistent storage** with stable memory
+- 🔐 **Internet Identity Authentication** - Secure, anonymous login
+- 🎁 **1000 EDU Welcome Bonus** - Only for Internet Identity users
+- 💸 **Peer-to-Peer Transfers** - Send tokens between users
+- 👑 **Creator Minting** - Authorized token creation
+- 📊 **Real-time Token Explorer** - Live balance tracking
+- 🛡️ **Secure & Persistent** - Stable memory storage
 
-### 🔐 **Authentication**
-- **Internet Identity** integration for secure login
-- **Principal-based** user identification
-- **Anonymous** and privacy-focused authentication
-- **Role-based access** control (creator privileges)
+## 🎯 **How It Works**
 
-### 💻 **User Experience**
-- **Modern React/Next.js** frontend
-- **TailwindCSS** styling with responsive design
-- **Real-time updates** after all transactions
-- **Comprehensive error handling** with user feedback
-- **Intuitive tab-based** navigation
+1. **Register via Internet Identity** → Get 1000 EDU tokens
+2. **Transfer tokens** to other users
+3. **Explore balances** and token statistics
+4. **Creators can mint** new tokens
+
+## 🆔 **Deployment Info**
+
+**Network:** ICP Playground  
+**Frontend Canister:** `5stdt-mqaaa-aaaab-qac3q-cai`  
+**Backend Canister:** `oqjvn-fqaaa-aaaab-qab5q-cai`  
+**Creator Principal:** `vxwx5-ub6ab-gnobq-jrsk3-egfcp-tz3hj-3mpul-thqzf-dtzol-qb3gz-bqe`
+
+## 🛠️ **Local Development**
+
+```bash
+# Start local replica
+dfx start --background
+
+# Deploy locally
+dfx deploy
+
+# Build frontend
+npm run build
+```
 
 ## 🏗️ **Architecture**
 
-### Backend (Rust Canister)
-- Rust canister with stable memory for persistence
-- Standard token operations: transfer, mint, balance
-- Role-based access control for minting
-- Uses `ic-stable-structures` for upgrade safety
+**Backend:** Rust canister with stable memory  
+**Frontend:** Next.js/React with TypeScript  
+**Auth:** Internet Identity integration  
+**Storage:** Persistent across upgrades
 
-### Frontend (Next.js/React)
-- Modern React components with TypeScript
-- Internet Identity authentication integration
-- Real-time UI updates with error handling
-- TailwindCSS for responsive styling
+## 🔧 **API Functions**
 
-## 🎮 **Demo Scenarios**
+- `init_user()` - Register & get welcome bonus
+- `transfer(to, amount)` - Send tokens
+- `mint(to, amount)` - Create tokens (creator only)
+- `get_balance(principal)` - Check balance
+- `get_all_users()` - View token holders
 
-### **Scenario 1: Token Explorer**
-- View all token holders with rankings
-- See creator with initial 1M EDU tokens
-- Search for specific users
-- Real-time balance updates
+## 🎊 **Try It Now**
 
-### **Scenario 2: Multi-User Testing**
-1. **Login as Creator** - Access all features including minting
-2. **Open Incognito Browser** - Create second user account  
-3. **Mint Tokens** - Send tokens to new user as creator
-4. **Test Transfers** - Move tokens between accounts
-5. **Watch Live Updates** - See changes across all interfaces
+**Visit:** **https://5stdt-mqaaa-aaaab-qac3q-cai.icp0.io/**
 
-### **Scenario 3: Access Control**
-- **Creator privileges**: Mint tab accessible, creator badge shown
-- **Regular users**: Transfer and balance checking only
-- **Input validation**: Handles invalid Principal IDs gracefully
-
-## Technical Details
-
-### Token Contract Functions
-
-```rust
-// Query functions
-get_token_info() -> TokenInfo          // Get token name, symbol, supply, creator
-get_balance(Principal) -> u64          // Get balance for any account
-get_total_supply() -> u64              // Get total token supply
-get_all_users() -> Vec<UserInfo>       // Get all token holders
-is_creator(Principal) -> bool          // Check if account is creator
-
-// Update functions
-transfer(to: Principal, amount: u64) -> TransferResult  // Transfer tokens
-mint(to: Principal, amount: u64) -> MintResult          // Mint new tokens (creator only)
-```
-
-### Data Structures
-
-```rust
-TokenInfo {
-    name: String,           // "EduCoin"
-    symbol: String,         // "EDU" 
-    total_supply: u64,      // Current total supply
-    creator: Principal,     // Creator's Principal ID
-}
-
-UserInfo {
-    principal: Principal,   // User's Principal ID
-    balance: u64,          // Token balance
-}
-```
-
-### Memory Layout
-
-- **Memory 0**: Token metadata (name, symbol, total supply, creator)
-- **Memory 1**: User balances (Principal -> Balance mapping)
-
-Uses `ic-stable-structures` for automatic persistence across upgrades.
-
-## Development
-
-### Frontend Development
-
-```bash
-# Run development server
-npm run dev
-
-# Build for production
-npm run build
-
-# Lint code
-npm run lint
-```
-
-### Backend Development
-
-```bash
-# Test Rust code
-cd src/fungible_token_backend
-cargo test
-
-# Check Rust code
-cargo check --target wasm32-unknown-unknown
-
-# Generate Candid interface
-dfx generate fungible_token_backend
-```
-
-### Common Development Tasks
-
-#### Update canister code
-```bash
-# After making changes to Rust code
-dfx deploy fungible_token_backend
-
-# After making changes to frontend
-npm run build
-dfx deploy fungible_token_frontend
-```
-
-#### Reset local state
-```bash
-# Stop replica and start fresh
-dfx stop
-dfx start --background --clean
-dfx deploy
-```
-
-#### Check canister logs
-```bash
-# View backend logs
-dfx canister logs fungible_token_backend
-
-# View frontend logs  
-dfx canister logs fungible_token_frontend
-```
-
-## Security Features
-
-- **Internet Identity** for secure, anonymous authentication
-- **Principal-based** access control
-- **Creator-only minting** to prevent unauthorized token creation
-- **Input validation** for all user inputs
-- **Stable memory** for secure data persistence
-- **Error handling** to prevent invalid operations
-
-
-## Troubleshooting
-
-### Common Issues
-
-**"Failed to load user data"**
-- Check that canister IDs are set in environment variables
-- Verify canisters are deployed and running
-- Check browser console for detailed errors
-
-**"Invalid Principal ID"**  
-- Ensure Principal ID format is correct
-- Copy/paste Principal IDs to avoid typos
-- Use "Use my Principal ID" buttons when available
+1. Login with Internet Identity
+2. Receive 1000 EDU tokens automatically
+3. Transfer tokens to friends
+4. Explore the token ecosystem
 
 **Login issues**
 - Try clearing browser cache/cookies

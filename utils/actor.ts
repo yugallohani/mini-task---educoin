@@ -27,10 +27,11 @@ const idlFactory = ({ IDL }: any) => {
   });
   return IDL.Service({
     'get_token_info': IDL.Func([], [TokenInfo], ['query']),
-    'get_balance': IDL.Func([Principal], [IDL.Nat64], ['query']),
+    'get_balance': IDL.Func([Principal], [IDL.Nat64], []),
     'get_total_supply': IDL.Func([], [IDL.Nat64], ['query']),
     'get_all_users': IDL.Func([], [IDL.Vec(UserInfo)], ['query']),
     'is_creator': IDL.Func([Principal], [IDL.Bool], ['query']),
+    'init_user': IDL.Func([], [IDL.Nat64], []),
     'transfer': IDL.Func([Principal, IDL.Nat64], [TransferResult], []),
     'mint': IDL.Func([Principal, IDL.Nat64], [MintResult], []),
   });
@@ -56,24 +57,30 @@ export const getActor = async (): Promise<TokenActor> => {
       identity = null;
     }
     
-    // Create agent with proper configuration for local development
+    // Determine host based on environment
+    const host = process.env.NEXT_PUBLIC_IC_HOST || 'https://icp0.io';
+    const isLocal = host.includes('localhost') || host.includes('127.0.0.1');
+    
+    // Create agent with proper configuration
     const agent = new HttpAgent({
       identity: identity || undefined,
-      host: 'http://127.0.0.1:4943',
+      host: host,
       verifyQuerySignatures: false,
       // Add retries for network issues
       retryTimes: 3,
     });
 
-    console.log('🌐 Created agent with 127.0.0.1:4943');
+    console.log('🌐 Created agent with host:', host);
 
-    // Fetch root key for local development
-    try {
-      await agent.fetchRootKey();
-      console.log('✅ Root key fetched successfully');
-    } catch (rootKeyError) {
-      console.error('❌ Failed to fetch root key:', rootKeyError);
-      // Continue anyway, as some queries might still work
+    // Fetch root key only for local development
+    if (isLocal) {
+      try {
+        await agent.fetchRootKey();
+        console.log('✅ Root key fetched successfully for local development');
+      } catch (rootKeyError) {
+        console.error('❌ Failed to fetch root key:', rootKeyError);
+        // Continue anyway, as some queries might still work
+      }
     }
 
     // Create the actor
